@@ -10,6 +10,10 @@ autotests = false
 name = "solver_profile"
 required-features = ["internals"]
 
+[[bin]]
+name = "cfsolve-server"
+path = "src/bin/server/main.rs"
+
 # Without default features, the library is the solver alone: `Browser`, `Options`, `Outcome`
 # and `Error`. The tools in this repository use the rest.
 [features]
@@ -76,6 +80,8 @@ http-body-util = { version = "0.1", optional = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "logging", "ring"], optional = true }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12", "ring"], optional = true }
 rcgen = { version = "0.14", features = ["x509-parser"], optional = true }
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
 
 # `CLOCK_MONOTONIC`, the time base Chrome's `performance.now()` is derived from.
 [target.'cfg(unix)'.dependencies]

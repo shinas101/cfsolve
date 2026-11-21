@@ -66,6 +66,65 @@ site's real URL.
 | `--proxy <url>` | Send every request through an `http://`, `https://`, `socks5://`, or `socks5h://` proxy. Put credentials in the URL, as in `socks5h://user:password@host:1080`. |
 | `-h`, `--help` | Show help. |
 
+## HTTP API Server
+
+cfsolve includes a high-performance HTTP server with a REST API so challenges and Turnstile widgets can be solved over the network or internet:
+
+```sh
+cargo run --release --bin cfsolve-server
+```
+
+By default it listens on `0.0.0.0:8080` and loads `profiles/safari-26-ios.json`.
+
+```sh
+# Custom port and host
+cargo run --release --bin cfsolve-server -- --host 0.0.0.0 --port 3000
+
+# Specify browser profile and upstream proxy
+cargo run --release --bin cfsolve-server -- --fingerprint profiles/safari-26-ios.json --proxy socks5h://user:pass@host:1080
+```
+
+### API Endpoints
+
+- `GET /health` (or `GET /`) — Health check, server version, loaded profile, and uptime
+- `POST /solve` (or `POST /api/solve`) — Universal challenge / Turnstile solve
+  ```json
+  { "url": "https://example.com/protected", "proxy": "socks5h://127.0.0.1:1080" }
+  ```
+- `POST /turnstile` (or `POST /api/turnstile`) — Dedicated Turnstile widget solve
+  ```json
+  { "url": "https://example.com/login", "sitekey": "0x4AAAAAA...", "mode": "navigate" }
+  ```
+- `POST /challenge` (or `POST /api/challenge`) — Dedicated challenge clearance solve
+  ```json
+  { "url": "https://example.com/", "proxy": "socks5h://127.0.0.1:1080" }
+  ```
+- `POST /v1` — FlareSolverr-compatible endpoint for scrapers (e.g. Jackett, Prowlarr)
+  ```json
+  { "cmd": "request.get", "url": "https://example.com" }
+  ```
+
+### Example Usage (Python)
+
+```python
+import requests
+
+SOLVER_API = "http://localhost:8080/solve"
+
+# Solve Cloudflare challenge page or Turnstile widget
+res = requests.post(SOLVER_API, json={"url": "https://example.com/protected"}).json()
+
+if res.get("success"):
+    if res.get("type") == "clearance":
+        # Pass cookies and matching User-Agent to access protected site
+        session = requests.Session()
+        session.headers.update({"User-Agent": res["user_agent"]})
+        session.cookies.set("cf_clearance", res["clearance"])
+        page = session.get("https://example.com/protected")
+    else:
+        print("Turnstile token:", res["token"])
+```
+
 ## Library
 
 Add cfsolve as a path dependency and copy its `[patch]` section, since
