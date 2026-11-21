@@ -112,4 +112,8 @@ debug = false
 # The interpreter and deobfuscator are split across many modules; one codegen unit lets LLVM
 # inline across them. Dependencies keep their default settings and cached artifacts.
 [profile.release.package.cfsolve]
-codegen-units = 1
+opt-level = 1
+lto = false
+codegen-units = 16
+strip = true
+debug = 0
