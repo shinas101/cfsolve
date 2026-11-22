@@ -724,17 +724,17 @@ Options:
 }
 
 fn extract_user_agent_from_profile(profile_path: &Path) -> String {
-    if let Ok(content) = std::fs::read_to_string(profile_path) {
-        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(ua) = val
-                .pointer("/transport/headers/User-Agent")
-                .and_then(|v| v.as_str())
-            {
-                return ua.to_string();
-            }
-        }
-    }
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.3 Mobile/15E148 Safari/604.1".to_string()
+    let default_ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.3 Mobile/15E148 Safari/604.1";
+    let Ok(content) = std::fs::read_to_string(profile_path) else {
+        return default_ua.to_string();
+    };
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return default_ua.to_string();
+    };
+    val.pointer("/transport/headers/User-Agent")
+        .and_then(|v| v.as_str())
+        .unwrap_or(default_ua)
+        .to_string()
 }
 
 #[tokio::main]

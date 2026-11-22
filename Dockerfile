@@ -9,12 +9,17 @@ ARG RELEASE_TAG=latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install minimal runtime dependencies: TLS certificates, curl, and tar
+# Install minimal runtime dependencies: TLS certificates, curl, tar, and tzdata (for IANA timezone detection)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     tar \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Set default timezone to UTC and ensure /etc/localtime & /etc/timezone exist
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/UTC /etc/localtime && echo "UTC" > /etc/timezone
 
 WORKDIR /app
 
@@ -22,7 +27,7 @@ WORKDIR /app
 COPY profiles/ /app/profiles/
 
 # Cache bust to ensure latest binary is fetched on rebuild
-ARG CACHEBUST=v0.1.6
+ARG CACHEBUST=v0.1.7
 
 # Automatically detect system architecture and download the precompiled release binary
 RUN set -eux; \

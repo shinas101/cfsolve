@@ -23,7 +23,9 @@ impl Fields {
     /// Collects date-parsing results for the current time in the host time zone, using
     /// `engine`'s rules.
     pub fn collect(&self, engine: Engine) -> Result<JsObject> {
-        let name = iana_time_zone::get_timezone().context("reading the host IANA time zone")?;
+        let name = iana_time_zone::get_timezone()
+            .or_else(|_| std::env::var("TZ"))
+            .unwrap_or_else(|_| "UTC".to_string());
         self.collect_in(&Local, &name, Utc::now(), engine)
     }
 
