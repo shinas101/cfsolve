@@ -2,10 +2,12 @@
 # cfsolve-server: Fast prebuilt release runner for VPS / Easypanel
 # No compilation on VPS: downloads and runs the latest precompiled release binary
 # ==============================================================================
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 ARG GITHUB_REPO=shinas101/cfsolve
 ARG RELEASE_TAG=latest
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install minimal runtime dependencies: TLS certificates, curl, and tar
 RUN apt-get update && apt-get install -y --no-install-recommends \
