@@ -21,6 +21,9 @@ WORKDIR /app
 # Copy repository profiles directory as local fallback
 COPY profiles/ /app/profiles/
 
+# Cache bust to ensure latest binary is fetched on rebuild
+ARG CACHEBUST=v0.1.6
+
 # Automatically detect system architecture and download the precompiled release binary
 RUN set -eux; \
     ARCH="$(uname -m)"; \
