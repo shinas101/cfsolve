@@ -89,11 +89,11 @@ cargo run --release --bin cfsolve-server -- --fingerprint profiles/safari-26-ios
 The Dockerfile is optimized to automatically download the latest precompiled release binary from GitHub Releases instead of compiling from source. Deployment takes seconds and requires minimal RAM:
 
 1. **Trigger a Release**:
-   Push a tag (e.g. `v0.1.0`) or run the **build** workflow manually in GitHub Actions:
+   Simply push to `master` (or push a tag like `v0.1.0`):
    ```sh
-   git tag v0.1.0
-   git push orign v0.1.0
+   git push
    ```
+   GitHub Actions will automatically build for both `x86_64` and `aarch64` and publish a new release marked as `latest`.
 2. **Deploy on Easypanel**:
    - Add service -> **App** -> select this repo.
    - Set Build Type to **Dockerfile** (Port: `8080`).
