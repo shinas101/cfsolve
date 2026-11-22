@@ -124,6 +124,8 @@ struct SolveResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     page_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     user_agent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
@@ -181,6 +183,8 @@ struct ChallengeResponse {
     cookie_header: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     page_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    html: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     user_agent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -291,6 +295,7 @@ async fn solve_handler(
                     cookies: None,
                     cookie_header: None,
                     page_url: None,
+                    html: None,
                     user_agent: None,
                     error: Some(format!("Invalid URL: {e}")),
                     elapsed_ms: started.elapsed().as_millis() as u64,
@@ -311,6 +316,7 @@ async fn solve_handler(
                 cookies: None,
                 cookie_header: None,
                 page_url: Some(req.url),
+                html: None,
                 user_agent: Some(state.user_agent.clone()),
                 error: None,
                 elapsed_ms: started.elapsed().as_millis() as u64,
@@ -329,6 +335,7 @@ async fn solve_handler(
                     cookies: Some(cookie_items),
                     cookie_header: Some(cookie_header),
                     page_url: Some(clearance.page.url.to_string()),
+                    html: Some(clearance.page.html),
                     user_agent: Some(state.user_agent.clone()),
                     error: None,
                     elapsed_ms: started.elapsed().as_millis() as u64,
@@ -337,7 +344,7 @@ async fn solve_handler(
             )
         }
         Err(err) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::OK,
             Json(SolveResponse {
                 success: false,
                 r#type: None,
@@ -346,8 +353,9 @@ async fn solve_handler(
                 cookies: None,
                 cookie_header: None,
                 page_url: None,
+                html: None,
                 user_agent: Some(state.user_agent.clone()),
-                error: Some(err.to_string()),
+                error: Some(format!("{err:#}")),
                 elapsed_ms: started.elapsed().as_millis() as u64,
                 logs: sink.and_then(|s| s.logs.lock().ok().map(|l| l.clone())),
             }),
@@ -435,11 +443,11 @@ async fn turnstile_handler(
             }),
         ),
         Err(err) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::OK,
             Json(TurnstileResponse {
                 success: false,
                 token: None,
-                error: Some(err.to_string()),
+                error: Some(format!("{err:#}")),
                 elapsed_ms: started.elapsed().as_millis() as u64,
                 logs: sink.and_then(|s| s.logs.lock().ok().map(|l| l.clone())),
             }),
@@ -475,6 +483,7 @@ async fn challenge_handler(
                     cookies: None,
                     cookie_header: None,
                     page_url: None,
+                    html: None,
                     user_agent: None,
                     error: Some(format!("Invalid URL: {e}")),
                     elapsed_ms: started.elapsed().as_millis() as u64,
@@ -495,6 +504,7 @@ async fn challenge_handler(
                     cookies: Some(cookie_items),
                     cookie_header: Some(cookie_header),
                     page_url: Some(clearance.page.url.to_string()),
+                    html: Some(clearance.page.html),
                     user_agent: Some(state.user_agent.clone()),
                     error: None,
                     elapsed_ms: started.elapsed().as_millis() as u64,
@@ -503,15 +513,16 @@ async fn challenge_handler(
             )
         }
         Err(err) => (
-            StatusCode::BAD_GATEWAY,
+            StatusCode::OK,
             Json(ChallengeResponse {
                 success: false,
                 clearance: None,
                 cookies: None,
                 cookie_header: None,
                 page_url: None,
+                html: None,
                 user_agent: Some(state.user_agent.clone()),
-                error: Some(err.to_string()),
+                error: Some(format!("{err:#}")),
                 elapsed_ms: started.elapsed().as_millis() as u64,
                 logs: sink.and_then(|s| s.logs.lock().ok().map(|l| l.clone())),
             }),
@@ -621,7 +632,7 @@ async fn flaresolverr_handler(
 
             Json(FlareSolverrResponse {
                 status: "error",
-                message: err.to_string(),
+                message: format!("{err:#}"),
                 start_timestamp: now,
                 end_timestamp: end,
                 version: "v3.3.21",
