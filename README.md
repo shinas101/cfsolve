@@ -84,6 +84,26 @@ cargo run --release --bin cfsolve-server -- --host 0.0.0.0 --port 3000
 cargo run --release --bin cfsolve-server -- --fingerprint profiles/safari-26-ios.json --proxy socks5h://user:pass@host:1080
 ```
 
+### VPS & Easypanel Deployment (No compilation on VPS)
+
+The Dockerfile is optimized to automatically download the latest precompiled release binary from GitHub Releases instead of compiling from source. Deployment takes seconds and requires minimal RAM:
+
+1. **Trigger a Release**:
+   Push a tag (e.g. `v0.1.0`) or run the **build** workflow manually in GitHub Actions:
+   ```sh
+   git tag v0.1.0
+   git push orign v0.1.0
+   ```
+2. **Deploy on Easypanel**:
+   - Add service -> **App** -> select this repo.
+   - Set Build Type to **Dockerfile** (Port: `8080`).
+   - Easypanel pulls the prebuilt release and launches immediately with zero CPU/RAM compilation spikes.
+
+3. **Direct VPS Install (Without Docker)**:
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/shinas101/cfsolve/master/scripts/deploy-vps.sh | bash
+   ```
+
 ### API Endpoints
 
 - `GET /health` (or `GET /`) — Health check, server version, loaded profile, and uptime

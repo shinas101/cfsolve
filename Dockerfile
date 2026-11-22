@@ -1,49 +1,63 @@
-# ==========================================
-# Stage 1: Build the release binary
-# ==========================================
-FROM rust:bookworm AS builder
+# ==============================================================================
+# cfsolve-server: Fast prebuilt release runner for VPS / Easypanel
+# No compilation on VPS: downloads and runs the latest precompiled release binary
+# ==============================================================================
+FROM debian:bookworm-slim
 
-# Install build dependencies needed for BoringSSL (btls-sys), bindgen, and C/C++ compilation
+ARG GITHUB_REPO=shinas101/cfsolve
+ARG RELEASE_TAG=latest
+
+# Install minimal runtime dependencies: TLS certificates, curl, and tar
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake \
-    clang \
-    libclang-dev \
-    llvm-dev \
-    build-essential \
-    git \
-    perl \
     ca-certificates \
+    curl \
+    tar \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy source tree
-COPY . .
+# Copy repository profiles directory as local fallback
+COPY profiles/ /app/profiles/
 
-# Build the high-performance release binary
-RUN cargo build --release --bin cfsolve-server
+# Automatically detect system architecture and download the precompiled release binary
+RUN set -eux; \
+    ARCH="$(uname -m)"; \
+    case "$ARCH" in \
+        x86_64)  ASSET_ARCH="x86_64" ;; \
+        aarch64|arm64) ASSET_ARCH="aarch64" ;; \
+        *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
+    esac; \
+    if [ "$RELEASE_TAG" = "latest" ]; then \
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/cfsolve-linux-${ASSET_ARCH}.tar.gz"; \
+    else \
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/cfsolve-linux-${ASSET_ARCH}.tar.gz"; \
+    fi; \
+    echo "Downloading precompiled cfsolve from ${DOWNLOAD_URL}..."; \
+    if curl -f -sSL -o /tmp/cfsolve.tar.gz "$DOWNLOAD_URL"; then \
+        tar -xzf /tmp/cfsolve.tar.gz -C /app; \
+        rm -f /tmp/cfsolve.tar.gz; \
+        if [ -f /app/cfsolve-server ]; then \
+            mv /app/cfsolve-server /usr/local/bin/cfsolve-server; \
+        fi; \
+        if [ -f /app/challenge ]; then \
+            mv /app/challenge /usr/local/bin/challenge; \
+        fi; \
+        if [ -f /app/capture-proxy ]; then \
+            mv /app/capture-proxy /usr/local/bin/capture-proxy; \
+        fi; \
+        chmod +x /usr/local/bin/cfsolve-server 2>/dev/null || true; \
+    else \
+        echo "========================================================================" >&2; \
+        echo "ERROR: Failed to download precompiled release binary from: $DOWNLOAD_URL" >&2; \
+        echo "Make sure you have triggered the GitHub Actions 'build' workflow or" >&2; \
+        echo "created a release on https://github.com/${GITHUB_REPO}/releases" >&2; \
+        echo "========================================================================" >&2; \
+        exit 1; \
+    fi
 
-# ==========================================
-# Stage 2: Minimal runtime image
-# ==========================================
-FROM debian:bookworm-slim AS runner
-
-# Install CA certificates for outgoing HTTPS requests
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy release binary and browser profiles
-COPY --from=builder /app/target/release/cfsolve-server /usr/local/bin/cfsolve-server
-COPY --from=builder /app/profiles /app/profiles
-
-# Default environment configuration
 ENV HOST=0.0.0.0
 ENV PORT=8080
 
 EXPOSE 8080
 
-# Start cfsolve API server
 ENTRYPOINT ["/usr/local/bin/cfsolve-server"]

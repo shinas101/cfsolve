@@ -1,6 +1,11 @@
 name: build
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
   push:
     tags: ['v*']
 
@@ -27,7 +32,8 @@ jobs:
       - run: cargo build --release --locked --bins --examples
       - run: |
           mkdir -p out/profiles out/examples
-          cp target/release/challenge target/release/capture-proxy out/
+          # Copy server, challenge, and proxy binaries
+          cp target/release/challenge target/release/capture-proxy target/release/cfsolve-server out/
           cp -r profiles/. out/profiles/
           find target/release/examples -maxdepth 1 -type f -perm -u+x -exec cp {} out/examples/ \;
           tar czf cfsolve-linux-${{ matrix.arch }}.tar.gz -C out .
@@ -37,7 +43,7 @@ jobs:
           path: cfsolve-linux-${{ matrix.arch }}.tar.gz
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-24.04
     steps:
@@ -47,14 +53,17 @@ jobs:
           merge-multiple: true
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.inputs.tag_name || github.ref_name }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+          echo "Publishing release for tag: ${TAG_NAME}"
+          gh release create "${TAG_NAME}" dist/*.tar.gz \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "cfsolve ${GITHUB_REF_NAME}" \
-            --notes "Linux release builds of cfsolve (fork of chris124567/cfsolve).
+            --title "cfsolve ${TAG_NAME}" \
+            --notes "Linux release builds of cfsolve.
 
-          - cfsolve-linux-x86_64.tar.gz
-          - cfsolve-linux-aarch64.tar.gz
+          Assets:
+          - cfsolve-linux-x86_64.tar.gz (Linux x86_64)
+          - cfsolve-linux-aarch64.tar.gz (Linux ARM64)
 
-          Each archive contains \`challenge\`, \`capture-proxy\`, \`profiles/\`, and \`examples/\`." \
-            --verify-tag
+          Each archive contains \`cfsolve-server\`, \`challenge\`, \`capture-proxy\`, \`profiles/\`, and \`examples/\`." \
+            --generate-notes || gh release upload "${TAG_NAME}" dist/*.tar.gz --clobber --repo "${GITHUB_REPOSITORY}"
